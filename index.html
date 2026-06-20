@@ -1,156 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYSTEM.PASSWORDANALYZER_V1.0.4</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-        body { 
-            font-family: 'Courier Prime', monospace; 
-        }
-        .cyber-panel {
-            box-shadow: inset 0 0 15px rgba(0, 255, 0, 0.2), 0 0 20px rgba(0, 255, 0, 0.4);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Strength Analyzer</title>
+
+<style>
+body{
+    background:#000;
+    color:#00ff41;
+    font-family:Consolas, monospace;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+.container{
+    width:500px;
+    background:#050505;
+    border:2px solid #00ff41;
+    box-shadow:0 0 20px #00ff41;
+    padding:25px;
+    border-radius:10px;
+}
+
+h2{
+    color:#00ff41;
+    text-align:center;
+    text-shadow:0 0 10px #00ff41;
+    margin-bottom:20px;
+}
+
+input{
+    width:100%;
+    background:#000;
+    color:#00ff41;
+    border:1px solid #00ff41;
+    padding:12px;
+    font-family:Consolas, monospace;
+}
+
+.meter{
+    margin-top:15px;
+    background:#111;
+    height:12px;
+    border:1px solid #00ff41;
+}
+
+.bar{
+    height:100%;
+    background:#00ff41;
+    box-shadow:0 0 10px #00ff41;
+}
+
+.feedback{
+    margin-top:20px;
+    border:1px solid #00ff41;
+    padding:12px;
+    background:#001100;
+}
+
+.result{
+    margin-top:15px;
+    font-weight:bold;
+    color:#00ff41;
+}
+</style>
 </head>
-<body class="bg-black text-green-500 min-h-screen flex items-center justify-center p-4 selection:bg-green-500 selection:text-black">
+<body>
 
-    <div id="root" class="w-full max-w-4xl"></div>
+<div class="container">
+    <h2>Password Strength Analyzer</h2>
 
-    <script type="text/babel">
-        const COMMON_PASSWORDS = new Set([
-            "123456", "password", "123456789", "qwerty", "12345", 
-            "password123", "football", "admin", "letmein", "p@ssword"
-        ]);
+    <div class="input-group">
+        <input type="password" id="password" placeholder="Enter password">
+        <button class="toggle" onclick="togglePassword()">Show</button>
+    </div>
 
-        function PasswordAnalyzer() {
-            const [password, setPassword] = React.useState('');
+    <div class="meter">
+        <div class="bar" id="bar"></div>
+    </div>
 
-            const evaluation = React.useMemo(() => {
-                const len = password.length;
-                if (len === 0) return null;
+    <div class="result" id="result">
+        Strength: -
+    </div>
 
-                if (COMMON_PASSWORDS.has(password.toLowerCase())) {
-                    return {
-                        level: "CRITICAL WEAKNESS",
-                        barWidth: "w-1/12",
-                        barBg: "bg-red-600",
-                        feedback: ["CRITICAL: Password matches global common dictionary exposure lists.", "Instantly crackable via modern rainbow tables."]
-                    };
-                }
+    <div class="common-warning" id="warning"></div>
 
-                const checks = {
-                    hasUpper: /[A-Z]/.test(password),
-                    hasLower: /[a-z]/.test(password),
-                    hasDigit: /\d/.test(password),
-                    hasSpecial: /[^A-Za-z0-9]/.test(password)
-                };
+    <div class="feedback">
+        <strong>Suggestions:</strong>
+        <ul id="tips"></ul>
+    </div>
+</div>
 
-                let poolSize = 0;
-                if (checks.hasLower) poolSize += 26;
-                if (checks.hasUpper) poolSize += 26;
-                if (checks.hasDigit) poolSize += 10;
-                if (checks.hasSpecial) poolSize += 32;
+<script>
+const passwordInput = document.getElementById("password");
 
-                const entropy = poolSize > 0 ? Math.floor(len * Math.log2(poolSize)) : 0;
+const commonPasswords = [
+    "123456",
+    "password",
+    "12345678",
+    "qwerty",
+    "abc123",
+    "111111",
+    "admin"
+];
 
-                const feedback = [];
-                if (len < 8) {
-                    feedback.push("VULNERABILITY: Sequence length dangerously critical (< 8 characters).");
-                } else if (len < 12) {
-                    feedback.push("WARNING: Increase total sequence length to 12+ characters for deep safety margins.");
-                }
+passwordInput.addEventListener("input", analyzePassword);
 
-                if (!checks.hasUpper) feedback.push("REMEDIATION: Missing upper-case matrices [A-Z].");
-                if (!checks.hasLower) feedback.push("REMEDIATION: Missing lower-case matrices [a-z].");
-                if (!checks.hasDigit) feedback.push("REMEDIATION: Missing numerical vector sequences [0-9].");
-                if (!checks.hasSpecial) feedback.push("REMEDIATION: Missing complex non-alphanumeric arrays.");
+function analyzePassword() {
+    const password = passwordInput.value;
 
-                if (entropy < 35 || len < 6) {
-                    return {
-                        level: "WEAK / HIGH RISK UNENCRYPTED",
-                        barWidth: "w-1/4",
-                        barBg: "bg-red-500",
-                        feedback: feedback.length ? feedback : ["Low structural variance observed."]
-                    };
-                } else if (entropy < 60) {
-                    return {
-                        level: "MODERATE INTEGRITY",
-                        barWidth: "w-2/4",
-                        barBg: "bg-yellow-500",
-                        feedback
-                    };
-                } else {
-                    return {
-                        level: "SECURE MATRIX VERIFIED",
-                        barWidth: "w-full",
-                        barBg: "bg-green-500",
-                        feedback: ["No structural vulnerabilities discovered within this vector."]
-                    };
-                }
-            }, [password]);
+    let score = 0;
+    let tips = [];
 
-            return (
-                <div className="border-2 border-green-500 bg-black p-6 rounded-sm cyber-panel relative">
-                    
-                    <div className="flex justify-between items-center border-b border-green-500 pb-2 mb-6">
-                        <span className="text-lg font-bold tracking-wider">SYSTEM.PASSWORDANALYZER_V1.0.4</span>
-                        <span className="text-sm opacity-80">{password.length} chars</span>
-                    </div>
+    if(password.length >= 8) score++;
+    else tips.push("Use at least 8 characters");
 
-                    <div className="border border-green-500 p-2 mb-6 bg-black">
-                        <input 
-                            type="text" 
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="TYPE PASSWORD..." 
-                            className="w-full bg-black text-green-500 outline-none border-none text-xl tracking-widest placeholder-green-900 uppercase focus:ring-0"
-                        />
-                    </div>
+    if(/[a-z]/.test(password) && /[A-Z]/.test(password))
+        score++;
+    else
+        tips.push("Add both uppercase and lowercase letters");
 
-                    <div className="mb-6">
-                        <div className="text-sm font-bold tracking-wider mb-2">SECURITY_STRENGTH_LEVEL:</div>
-                        <div className="w-full h-5 border border-green-500 bg-neutral-900/50 p-0.5 relative">
-                            {evaluation && (
-                                <div className={`h-full ${evaluation.barBg} ${evaluation.barWidth} transition-all duration-300`} />
-                            )}
-                        </div>
-                        {evaluation && (
-                            <div className="text-xs mt-1 font-bold uppercase tracking-wide">
-                                STATUS: <span className="underline">{evaluation.level}</span>
-                            </div>
-                        )}
-                    </div>
+    if(/[0-9]/.test(password))
+        score++;
+    else
+        tips.push("Include numbers");
 
-                    <div>
-                        <div className="text-sm font-bold tracking-wider border-b border-green-500/40 pb-1 mb-2">
-                            VULNERABILITY_REPORT:
-                        </div>
-                        
-                        <div className="min-h-[80px] space-y-1 text-sm">
-                            {!evaluation ? (
-                                <div className="animate-pulse">&gt; Enter password to analyze</div>
-                            ) : (
-                                evaluation.feedback.map((msg, index) => (
-                                    <div key={index} className="flex items-start">
-                                        <span className="mr-2">&gt;</span>
-                                        <span>{msg}</span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
+    if(/[!@#$%^&*(),.?\":{}|<>]/.test(password))
+        score++;
+    else
+        tips.push("Include special characters");
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<PasswordAnalyzer />);
-    </script>
+    if(password.length >= 12)
+        score++;
+
+    const result = document.getElementById("result");
+    const bar = document.getElementById("bar");
+    const warning = document.getElementById("warning");
+
+    warning.textContent = "";
+
+    if(commonPasswords.includes(password.toLowerCase())){
+        warning.textContent = "⚠ This is a commonly used password!";
+    }
+
+    let strength = "";
+    let color = "";
+    let width = "";
+
+    switch(score){
+        case 0:
+        case 1:
+            strength = "Weak";
+            color = "#ef4444";
+            width = "25%";
+            break;
+        case 2:
+            strength = "Fair";
+            color = "#f59e0b";
+            width = "50%";
+            break;
+        case 3:
+        case 4:
+            strength = "Good";
+            color = "#3b82f6";
+            width = "75%";
+            break;
+        case 5:
+            strength = "Strong";
+            color = "#22c55e";
+            width = "100%";
+            break;
+    }
+
+    result.textContent = "Strength: " + strength;
+    bar.style.width = width;
+    bar.style.background = color;
+
+    document.getElementById("tips").innerHTML =
+        tips.length
+        ? tips.map(t => `<li>${t}</li>`).join("")
+        : "<li>Excellent password!</li>";
+}
+
+function togglePassword(){
+    const input = document.getElementById("password");
+    const btn = document.querySelector(".toggle");
+
+    if(input.type === "password"){
+        input.type = "text";
+        btn.textContent = "Hide";
+    }else{
+        input.type = "password";
+        btn.textContent = "Show";
+    }
+}
+</script>
+
 </body>
 </html>
